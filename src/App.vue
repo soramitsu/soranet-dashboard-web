@@ -79,7 +79,7 @@ export default {
   methods: {
     async getEnv () {
       const { data } = await axios.get('/config.json')
-      this.URL = data.services.dc
+      this.URL = data.services.dc.value
     },
     async getHolders () {
       const { data } = await axios.get(`${this.URL}/v1/holders`, {
