@@ -65,8 +65,8 @@ pipeline {
       steps {
         script {
           docker_tag = env.TAG_NAME ? env.TAG_NAME : tag[env.GIT_BRANCH]
-          def deployImage = docker.build("nexus.iroha.tech:19001/sora-middleware/admin-panel:${docker_tag}", "-f Dockerfile .")
-          docker.withRegistry('https://nexus.iroha.tech:19001', 'sora-nexus-credentials') {
+          def deployImage = docker.build("docker.soramitsu.co.jp/soranet/dashboard-web:${docker_tag}", "-f Dockerfile .")
+          docker.withRegistry('https://docker.soramitsu.co.jp', 'bot-soranet-rw') {
             deployImage.push()
           }
         }
