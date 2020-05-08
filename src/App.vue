@@ -82,7 +82,7 @@ export default {
       this.URL = data.services.dc.value
     },
     async getHolders () {
-      const { data } = await axios.get(`${this.URL}/v1/holders`, {
+      const { data } = await axios.get(`${location.protocol}//${this.URL}/v1/holders`, {
         params: {
           pageNumber: 0,
           pageSize: 100
@@ -91,7 +91,7 @@ export default {
       this.holders = data.holders
     },
     async getTotal () {
-      const { data } = await axios.get(`${this.URL}/v1/holders/total`)
+      const { data } = await axios.get(`${location.protocol}//${this.URL}/v1/holders/total`)
       this.totalSupply = new BN(data.totalSupply.supply)
       this.lastUpdate = format(new Date(data.totalSupply.timestamp), 'PPpp')
     }
