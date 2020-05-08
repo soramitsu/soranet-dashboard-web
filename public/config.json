@@ -1,0 +1,7 @@
+{
+  "services": {
+    "dc": {
+      "value": "dc.localhost:3000"
+    }
+  }
+}

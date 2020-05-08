@@ -63,19 +63,24 @@ export default {
   name: 'app',
   data () {
     return {
-      URL: process.env.NODE_ENV === 'development'
-        ? 'https://dc.s1.dev.soranet.soramitsu.co.jp'
-        : 'https://dc.s1.soranet.soramitsu.co.jp',
+      URL: '',
       holders: [],
       totalSupply: 0,
       lastUpdate: 0
     }
   },
   created () {
-    this.getHolders()
-    this.getTotal()
+    this.getEnv()
+      .then(() => {
+        this.getHolders()
+        this.getTotal()
+      })
   },
   methods: {
+    async getEnv () {
+      const { data } = await axios.get('/config.json')
+      this.URL = data.services.dc
+    },
     async getHolders () {
       const { data } = await axios.get(`${this.URL}/v1/holders`, {
         params: {
