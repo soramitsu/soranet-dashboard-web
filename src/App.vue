@@ -11,7 +11,7 @@
         </div>
         <div class="supply_block-total">
           <span class="title">Total xor supply</span>
-          <span class="number">{{ totalSupply }}<span class="dot">.123123</span></span>
+          <span class="number">{{ totalSupply.v }}<span class="dot">.{{ totalSupply.dp }}</span></span>
         </div>
       </div>
       <div class="desc_block">
@@ -42,7 +42,7 @@
         >
           <span class="cell">{{ index }}</span>
           <span class="cell">{{ row.accountId }} </span>
-          <span class="cell">{{ row.amount }}</span>
+          <span class="cell">{{ row.amount | toBNString }}</span>
           <span class="cell">{{ row.percentage }}%</span>
         </div>
         <div class="table_sticky">
@@ -51,30 +51,6 @@
           </div>
         </div>
       </div>
-      <!-- <el-table
-        :data="holders"
-      >
-        <el-table-column
-          type="index"
-          width="50"
-          label="#"
-        >
-        </el-table-column>
-        <el-table-column
-          prop="accountId"
-          label="Wallet Account ID"
-        >
-        </el-table-column>
-        <el-table-column
-          prop="amount"
-          label="Amount"
-        >
-        </el-table-column>
-        <el-table-column
-          prop="percentage"
-          label="% of Total Supply">
-        </el-table-column>
-      </el-table> -->
     </div>
   </div>
 </template>
@@ -84,6 +60,18 @@ import axios from 'axios'
 import BN from 'bignumber.js'
 import format from 'date-fns/format'
 
+const BigNumberFormat = {
+  prefix: '',
+  decimalSeparator: '.',
+  groupSeparator: ',',
+  groupSize: 3,
+  secondaryGroupSize: 0,
+  fractionGroupSeparator: ' ',
+  fractionGroupSize: 0,
+  suffix: ''
+}
+BN.set({ DECIMAL_PLACES: 18, ROUNDING_MODE: BN.ROUND_UP })
+
 export default {
   name: 'app',
   data () {
@@ -92,7 +80,10 @@ export default {
       // protocol: location.protocol,
       protocol: 'https:',
       holders: [],
-      totalSupply: 0,
+      totalSupply: {
+        v: '0',
+        dp: '0'
+      },
       lastUpdate: 0
     }
   },
@@ -119,8 +110,19 @@ export default {
     },
     async getTotal () {
       const { data } = await axios.get(`${this.protocol}//${this.URL}/v1/holders/total`)
-      this.totalSupply = new BN(data.totalSupply.supply)
+      const v = new BN(data.totalSupply.supply)
+        .toFormat(BigNumberFormat)
+        .split('.')
+      this.totalSupply = {
+        v: v[0],
+        dp: v[1] && v[1].length ? v[1] : '00'
+      }
       this.lastUpdate = format(new Date(data.totalSupply.timestamp), 'PPpp')
+    }
+  },
+  filters: {
+    toBNString (v) {
+      return new BN(v).toFormat(BigNumberFormat)
     }
   }
 }
