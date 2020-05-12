@@ -84,7 +84,8 @@ export default {
   data () {
     return {
       URL: '',
-      protocol: location.protocol,
+      // protocol: location.protocol,
+      protocol: 'https:',
       holders: [],
       totalSupply: {
         v: '0',
@@ -96,10 +97,8 @@ export default {
   },
   async created () {
     await this.getEnv()
-      .then(async () => {
-        await this.getHolders()
-        await this.getTotal()
-      })
+    await this.getHolders()
+    await this.getTotal()
   },
   methods: {
     async getEnv () {
@@ -118,12 +117,12 @@ export default {
     async getTotal () {
       const { data } = await axios.get(`${this.protocol}//${this.URL}/v1/holders/total`)
       const { totalSupply } = data
-      const v = new BN(totalSupply ? totalSupply.supply : 0)
+      const supply = new BN(totalSupply ? totalSupply.supply : 0)
         .toFormat(BigNumberFormat)
         .split('.')
       this.totalSupply = {
-        v: v[0],
-        dp: v[1] && v[1].length ? v[1] : '00'
+        v: supply[0],
+        dp: supply[1] && supply[1].length ? supply[1] : '00'
       }
       this.lastUpdate = format(new Date(totalSupply.timestamp), 'PPpp')
     },
