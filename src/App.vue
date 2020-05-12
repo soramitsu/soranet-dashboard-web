@@ -40,14 +40,21 @@
           :key="row.accountId"
           class="table_row"
         >
-          <span class="cell">{{ index }}</span>
+          <span class="cell">{{ (currentPage * 50) + index }}</span>
           <span class="cell">{{ row.accountId }} </span>
           <span class="cell">{{ row.amount | toBNString }}</span>
           <span class="cell">{{ row.percentage }}%</span>
         </div>
+        <div v-if="!holders.length" class="table_row table_empty">
+          No data
+        </div>
         <div class="table_sticky">
           <div class="table_row table_footer footer">
-            <span class="cell">15%</span>
+            <div />
+            <div class="footer_icons">
+              <img @click="nextPage(currentPage - 1)" class="footer_prev-icon" src="@/assets/icons/arrow.svg">
+              <img @click="nextPage(currentPage + 1)" class="footer_next-icon" src="@/assets/icons/arrow.svg">
+            </div>
           </div>
         </div>
       </div>
@@ -77,21 +84,21 @@ export default {
   data () {
     return {
       URL: '',
-      // protocol: location.protocol,
-      protocol: 'https:',
+      protocol: location.protocol,
       holders: [],
       totalSupply: {
         v: '0',
         dp: '0'
       },
-      lastUpdate: 0
+      lastUpdate: 0,
+      currentPage: 0
     }
   },
-  created () {
-    this.getEnv()
-      .then(() => {
-        this.getHolders()
-        this.getTotal()
+  async created () {
+    await this.getEnv()
+      .then(async () => {
+        await this.getHolders()
+        await this.getTotal()
       })
   },
   methods: {
@@ -102,7 +109,7 @@ export default {
     async getHolders () {
       const { data } = await axios.get(`${this.protocol}//${this.URL}/v1/holders`, {
         params: {
-          pageNumber: 0,
+          pageNumber: this.currentPage,
           pageSize: 100
         }
       })
@@ -110,14 +117,23 @@ export default {
     },
     async getTotal () {
       const { data } = await axios.get(`${this.protocol}//${this.URL}/v1/holders/total`)
-      const v = new BN(data.totalSupply.supply)
+      const { totalSupply } = data
+      const v = new BN(totalSupply ? totalSupply.supply : 0)
         .toFormat(BigNumberFormat)
         .split('.')
       this.totalSupply = {
         v: v[0],
         dp: v[1] && v[1].length ? v[1] : '00'
       }
-      this.lastUpdate = format(new Date(data.totalSupply.timestamp), 'PPpp')
+      this.lastUpdate = format(new Date(totalSupply.timestamp), 'PPpp')
+    },
+    async nextPage (page) {
+      if (page < 0) {
+        this.currentPage = 0
+      } else {
+        this.currentPage = page
+      }
+      await this.getHolders()
     }
   },
   filters: {
@@ -291,13 +307,38 @@ html {
       border-top-width: 0px;
 
       &.footer {
+        grid-template-columns: 1fr 0.1fr;
+        padding: 0.5rem;
         border: 1px solid #dddddd;
         border-top-width: 1px;
         border-radius: 0px 0px 8px 8px;
+
+        .footer_icons {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          .footer_next-icon {
+            cursor: pointer;
+            padding: 0.5rem;
+            transform: rotate(-90deg);
+          }
+          .footer_prev-icon {
+            cursor: pointer;
+            padding: 0.5rem;
+            transform: rotate(90deg);
+          }
+        }
       }
       &.header {
         border: 1px solid #dddddd;
         border-radius: 8px 8px 0 0;
+      }
+      &.table_empty {
+        font-family: 'SoraSB';
+        display: flex;
+        justify-content: center;
+        padding: 0.5rem;
+        border-bottom-width: 0px;
       }
     }
     .table_sticky {
