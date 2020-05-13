@@ -48,13 +48,11 @@
         <div v-if="!holders.length" class="table_row table_empty">
           No data
         </div>
-        <div class="table_sticky">
-          <div class="table_row table_footer footer">
-            <div />
-            <div class="footer_icons">
-              <img @click="nextPage(currentPage - 1)" class="footer_prev-icon" src="@/assets/icons/arrow.svg">
-              <img @click="nextPage(currentPage + 1)" class="footer_next-icon" src="@/assets/icons/arrow.svg">
-            </div>
+        <div class="table_row table_footer footer">
+          <div />
+          <div class="footer_icons">
+            <img @click="nextPage(currentPage - 1)" class="footer_prev-icon" src="@/assets/icons/arrow.svg">
+            <img @click="nextPage(currentPage + 1)" class="footer_next-icon" src="@/assets/icons/arrow.svg">
           </div>
         </div>
       </div>
@@ -66,6 +64,7 @@
 import axios from 'axios'
 import BN from 'bignumber.js'
 import format from 'date-fns/format'
+import parseISO from 'date-fns/parseISO'
 
 const BigNumberFormat = {
   prefix: '',
@@ -124,7 +123,7 @@ export default {
         v: supply[0],
         dp: supply[1] && supply[1].length ? supply[1] : '00'
       }
-      this.lastUpdate = format(new Date(totalSupply.timestamp), 'PPpp')
+      this.lastUpdate = format(parseISO(totalSupply.timestamp), 'PPpp')
     },
     async nextPage (page) {
       if (page < 0) {
