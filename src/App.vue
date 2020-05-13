@@ -49,7 +49,21 @@
           No data
         </div>
         <div class="table_row table_footer footer">
-          <div />
+          <div class="footer_action">
+            <span class="footer_action-desc">Rows per page</span>
+            <el-select
+              v-model="currentPageSize"
+              class="footer_action-selector"
+              @change="onPageSizeChange"
+            >
+              <el-option
+                v-for="amount in [50, 100, 200, 500]"
+                :key="amount"
+                :label="amount"
+                :value="amount">
+              </el-option>
+            </el-select>
+          </div>
           <div class="footer_icons">
             <img @click="nextPage(currentPage - 1)" class="footer_prev-icon" src="@/assets/icons/arrow.svg">
             <img @click="nextPage(currentPage + 1)" class="footer_next-icon" src="@/assets/icons/arrow.svg">
@@ -83,15 +97,15 @@ export default {
   data () {
     return {
       URL: '',
-      // protocol: location.protocol,
-      protocol: 'https:',
+      protocol: location.protocol,
       holders: [],
       totalSupply: {
         v: '0',
         dp: '0'
       },
       lastUpdate: 0,
-      currentPage: 0
+      currentPage: 0,
+      currentPageSize: 100
     }
   },
   async created () {
@@ -108,7 +122,7 @@ export default {
       const { data } = await axios.get(`${this.protocol}//${this.URL}/v1/holders`, {
         params: {
           pageNumber: this.currentPage,
-          pageSize: 100
+          pageSize: this.currentPageSize
         }
       })
       this.holders = data.holders
@@ -132,6 +146,9 @@ export default {
         this.currentPage = page
       }
       await this.getHolders()
+    },
+    async onPageSizeChange () {
+      this.nextPage(0)
     }
   },
   filters: {
@@ -293,7 +310,7 @@ html {
   }
 
   .table {
-    margin-top: 1.5rem;
+    margin: 1.5rem 0;
     .table_row {
       display: grid;
       grid-template-columns: 0.2fr 1fr 1fr 0.5fr;
@@ -308,8 +325,53 @@ html {
         grid-template-columns: 1fr 0.1fr;
         padding: 0.5rem;
         border: 1px solid #dddddd;
-        border-top-width: 1px;
+        border-top-width: 0px;
         border-radius: 0px 0px 8px 8px;
+
+        .footer_action {
+          display: flex;
+          justify-content: flex-end;
+          align-items: center;
+          flex-direction: row;
+          margin-right: 2rem;
+          .footer_action-desc {
+            font-size: 0.8rem;
+            color: #a1a1a1;
+          }
+          .footer_action-selector {
+            .el-input {
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              height: 10px;
+              .el-select__caret {
+                color: #D0021B;
+              }
+            }
+            .el-input__inner {
+              color: #202020;
+              width: 3rem;
+              border: 0px;
+              height: 12px;
+              padding-right: 0px;
+            }
+            .el-input__prefix, .el-input__suffix {
+              position: relative;
+            }
+            .el-input__icon {
+              line-height: unset;
+            }
+            .el-icon-arrow-up:before {
+              display: block;
+              content: ' ';
+              background-image: url('assets/icons/arrow.svg');
+              background-repeat: no-repeat;
+              width: 20px;
+              height: 8px;
+              transform: rotate(180deg);
+            }
+          }
+        }
 
         .footer_icons {
           display: flex;
@@ -336,7 +398,6 @@ html {
         display: flex;
         justify-content: center;
         padding: 0.5rem;
-        border-bottom-width: 0px;
       }
     }
     .table_sticky {
@@ -368,5 +429,13 @@ html {
       }
     }
   }
+}
+
+.el-select-dropdown__item {
+  font-family: 'Sora';
+  font-size: 0.7rem !important;
+}
+.el-select-dropdown__item.selected {
+  color: #D0021B !important;
 }
 </style>
