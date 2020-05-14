@@ -1,55 +1,75 @@
 <template>
   <div id="app">
-    <div>
-      <div class="sora_logo">
-        <img src="@/assets/icons/logo.svg" alt="Sora - The Decentralized Autonomous Economy">
-        <span class="sora_logo-text">On this page SoraNet accounts with XOR are listed in descending order.</span>
-      </div>
-      <div class="sora_row">
-        <div class="sora_block sora_total-block">
-          <div class="sora_total-left">
-            <img src="@/assets/icons/xor-icon.svg" class="sora_total-img" alt="XOR Total Supply" />
-          </div>
-          <div class="sora_total-right">
-            <span class="sora_title small">Total Supply</span>
-            <span class="sora_total-amount">{{ Number(this.totalSupply || 0).toLocaleString() }}</span>
-          </div>
+    <div class="update_block">
+      <img class="update_block-icon" src="@/assets/icons/info.svg"/>
+      <span class="update_block-desc">Last update (every 24h): <span class="black">{{ lastUpdate }}</span></span>
+    </div>
+    <div class="row_block">
+      <div class="supply_block">
+        <div class="supply_block-icon">
+          <img class="icon" src="@/assets/icons/xor.svg" alt="XOR Total Supply" />
         </div>
-        <div class="sora_block">
-         Last update (every 24hr):<br><b>{{ lastUpdate }}</b>
+        <div class="supply_block-total">
+          <span class="title">Total xor supply</span>
+          <span class="number">{{ totalSupply.v }}<span class="dot">.{{ totalSupply.dp }}</span></span>
         </div>
       </div>
-      <div class="sora_block sora_table-block">
-        <span class="sora_title">XOR holders in SoraNet</span>
-        <el-table
-          :data="holders"
-        >
-          <el-table-column
-            type="index"
-            width="50"
-            label="#"
-          >
-          </el-table-column>
-          <el-table-column
-            prop="accountId"
-            label="Wallet Account ID"
-          >
-          </el-table-column>
-          <el-table-column
-            prop="amount"
-            label="Amount"
-          >
-          </el-table-column>
-          <el-table-column
-            prop="percentage"
-            label="% of Total Supply">
-          </el-table-column>
-        </el-table>
+      <div class="desc_block">
+        <div class="desk_block-text">
+          <span>Decentralized autonomous economy that works for all.</span>
+          <span class="linked">Visit <a class="link" href="https://sora.org" alt="Sora.org">sora.org<img class="icon" src="@/assets/icons/external.svg"></a></span>
+        </div>
+      </div>
+      <div class="logo_block">
+        <img class="logo_block-img" src="@/assets/icons/sora.png" alt="XOR Total Supply" />
       </div>
     </div>
-    <div class="sora_footer">
-      <span>Sora - The Decentralized Autonomous Economy</span>
-      <a href="https://sora.org/" class="sora_footer-link" alt="Sora.org">Sora.org</a>
+    <div class="table_block">
+      <span class="table_block-title">SoraNet XOR holders</span>
+      <div class="table">
+        <div class="table_sticky">
+          <div class="table_header table_row header">
+            <span class="cell">#</span>
+            <span class="cell">Account ID</span>
+            <span class="cell">Holders Amount</span>
+            <span class="cell">Total Supply Part</span>
+          </div>
+        </div>
+        <div
+          v-for="(row, index) in holders"
+          :key="row.accountId"
+          class="table_row"
+        >
+          <span class="cell">{{ (currentPage * 50) + index }}</span>
+          <span class="cell">{{ row.accountId }} </span>
+          <span class="cell">{{ row.amount | toBNString }}</span>
+          <span class="cell">{{ row.percentage }}%</span>
+        </div>
+        <div v-if="!holders.length" class="table_row table_empty">
+          No data
+        </div>
+        <div class="table_row table_footer footer">
+          <div class="footer_action">
+            <span class="footer_action-desc">Rows per page</span>
+            <el-select
+              v-model="currentPageSize"
+              class="footer_action-selector"
+              @change="onPageSizeChange"
+            >
+              <el-option
+                v-for="amount in [50, 100, 200, 500]"
+                :key="amount"
+                :label="amount"
+                :value="amount">
+              </el-option>
+            </el-select>
+          </div>
+          <div class="footer_icons">
+            <img @click="nextPage(currentPage - 1)" class="footer_prev-icon" src="@/assets/icons/arrow.svg">
+            <img @click="nextPage(currentPage + 1)" class="footer_next-icon" src="@/assets/icons/arrow.svg">
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -58,23 +78,40 @@
 import axios from 'axios'
 import BN from 'bignumber.js'
 import format from 'date-fns/format'
+import parseISO from 'date-fns/parseISO'
+
+const BigNumberFormat = {
+  prefix: '',
+  decimalSeparator: '.',
+  groupSeparator: ',',
+  groupSize: 3,
+  secondaryGroupSize: 0,
+  fractionGroupSeparator: ' ',
+  fractionGroupSize: 0,
+  suffix: ''
+}
+BN.set({ DECIMAL_PLACES: 18, ROUNDING_MODE: BN.ROUND_UP })
 
 export default {
   name: 'app',
   data () {
     return {
       URL: '',
+      protocol: location.protocol,
       holders: [],
-      totalSupply: 0,
-      lastUpdate: 0
+      totalSupply: {
+        v: '0',
+        dp: '0'
+      },
+      lastUpdate: 0,
+      currentPage: 0,
+      currentPageSize: 100
     }
   },
-  created () {
-    this.getEnv()
-      .then(() => {
-        this.getHolders()
-        this.getTotal()
-      })
+  async created () {
+    await this.getEnv()
+    await this.getHolders()
+    await this.getTotal()
   },
   methods: {
     async getEnv () {
@@ -82,18 +119,41 @@ export default {
       this.URL = data.services.dc.value
     },
     async getHolders () {
-      const { data } = await axios.get(`${location.protocol}//${this.URL}/v1/holders`, {
+      const { data } = await axios.get(`${this.protocol}//${this.URL}/v1/holders`, {
         params: {
-          pageNumber: 0,
-          pageSize: 100
+          pageNumber: this.currentPage,
+          pageSize: this.currentPageSize
         }
       })
       this.holders = data.holders
     },
     async getTotal () {
-      const { data } = await axios.get(`${location.protocol}//${this.URL}/v1/holders/total`)
-      this.totalSupply = new BN(data.totalSupply.supply)
-      this.lastUpdate = format(new Date(data.totalSupply.timestamp), 'PPpp')
+      const { data } = await axios.get(`${this.protocol}//${this.URL}/v1/holders/total`)
+      const { totalSupply } = data
+      const supply = new BN(totalSupply ? totalSupply.supply : 0)
+        .toFormat(BigNumberFormat)
+        .split('.')
+      this.totalSupply = {
+        v: supply[0],
+        dp: supply[1] && supply[1].length ? supply[1] : '00'
+      }
+      this.lastUpdate = format(parseISO(totalSupply.timestamp), 'PPpp')
+    },
+    async nextPage (page) {
+      if (page < 0) {
+        this.currentPage = 0
+      } else {
+        this.currentPage = page
+      }
+      await this.getHolders()
+    },
+    async onPageSizeChange () {
+      this.nextPage(0)
+    }
+  },
+  filters: {
+    toBNString (v) {
+      return new BN(v).toFormat(BigNumberFormat)
     }
   }
 }
@@ -127,7 +187,7 @@ export default {
 
 html {
   box-sizing: border-box;
-  background-color: #F2F7F7;
+  background-color: #ffffff;
   min-height: 100vh;
 }
 
@@ -141,99 +201,241 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: #202020;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
   height: 100vh;
+  padding: 2rem 4rem;
 }
 
-.sora_block {
-  background-color: #ffffff;
-  margin: 1rem;
-  padding: 1rem;
-  border-radius: 20px;
-  flex-grow: 1;
-}
-
-.sora_title {
-  font-family: 'SoraB';
-  font-size: 1.4rem;
-  font-weight: 500;
-
-  &.small {
-    font-size: 1rem;
-  }
-}
-
-.sora_footer {
+.update_block {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  height: 3rem;
-  background-color: #202020;
-  padding: 2rem;
-  color: #ffffff;
-
-  .sora_footer-link {
-    color: #D0021B;
+  align-items: center ;
+  .update_block-icon {
+    width: 20px;
+    margin-right: 0.5rem;
   }
-}
+  .update_block-desc {
+    color: #a1a1a0;
 
-.sora_logo {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 1rem;
-
-  .sora_logo-text {
-    text-align: center;
-    align-self: center;
-    padding: 0.5rem;
-    font-size: 0.9rem;
-    width: 50%;
-  }
-}
-
-.sora_row {
-  display: flex;
-  flex-direction: row;
-}
-
-.sora_total-block {
-  padding: 0;
-  display: flex;
-  height: 5rem;
-
-  .sora_total-img {
-    width: 32px;
-    height: 32px;
-  }
-
-  .sora_total-left {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-color: #D0021B;
-    min-width: 10%;
-    border-radius: 20px 0 0 20px;
-  }
-
-  .sora_total-right {
-    padding: 1rem;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-
-    .sora_total-amount {
-      font-size: 1.5rem;
+    & .black {
+      color: #202020;
     }
   }
 }
 
-/* ELEMENT UI STYLES */
-.el-table .el-table__header thead,
-.el-table .el-table__row {
-  color: #202020;
+.row_block {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr;
+  gap: 1px 1px;
+  grid-template-areas: ". . .";
+  margin: 2rem 0;
+}
+
+.supply_block {
+  display: flex;
+  flex-direction: row;
+  box-shadow: 0px 1px 25px rgba(0, 0, 0, 0.1),
+              0px 1px 4px rgba(0, 0, 0, 0.05),
+              0px 1px 1px rgba(0, 0, 0, 0.05);
+  border-radius: 10px;
+  height: 5.5rem;
+
+  .supply_block-icon {
+    border: 1px solid #dbdbdb;
+    border-left-width: 0px;
+    border-top-width: 0px;
+    border-bottom-width: 0px;
+    padding: 1rem;
+  }
+
+  .supply_block-total {
+    font-family: 'SoraSB';
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 1rem;
+    & .title {
+      text-transform: uppercase;
+      font-size: 0.9rem;
+    }
+    & .number {
+      font-size: 1.2rem;
+      & .dot {
+        color: #a1a1a0
+      }
+    }
+
+  }
+}
+
+.desc_block {
+  display: flex;
+  margin: 0 auto;
+  max-width: 60%;
+  .desk_block-text {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    color: #a1a1a0;
+    padding: 0.2rem 0;
+    & .linked {
+      line-height: 1px;
+      & .link {
+        color: #D0021B;
+        text-decoration: unset;
+
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+
+      & .icon {
+        width: 0.6rem;
+        margin-left: 0.2rem;
+      }
+    }
+  }
+}
+
+.logo_block {
+  display: flex;
+  justify-content: flex-end;
+  .logo_block-img {
+    height: 5.5rem;
+  }
+}
+
+.table_block {
+  .table_block-title {
+    font-size: 2rem
+  }
+
+  .table {
+    margin: 1.5rem 0;
+    .table_row {
+      display: grid;
+      grid-template-columns: 0.2fr 1fr 1fr 0.5fr;
+      grid-template-rows: 1fr;
+      gap: 1px 1px;
+      grid-template-areas: ". . . .";
+
+      border: 1px solid #dddddd;
+      border-top-width: 0px;
+
+      &.footer {
+        grid-template-columns: 1fr 0.1fr;
+        padding: 0.5rem;
+        border: 1px solid #dddddd;
+        border-top-width: 0px;
+        border-radius: 0px 0px 8px 8px;
+
+        .footer_action {
+          display: flex;
+          justify-content: flex-end;
+          align-items: center;
+          flex-direction: row;
+          margin-right: 2rem;
+          .footer_action-desc {
+            font-size: 0.8rem;
+            color: #a1a1a1;
+          }
+          .footer_action-selector {
+            .el-input {
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              height: 10px;
+              .el-select__caret {
+                color: #D0021B;
+              }
+            }
+            .el-input__inner {
+              color: #202020;
+              width: 3rem;
+              border: 0px;
+              height: 12px;
+              padding-right: 0px;
+            }
+            .el-input__prefix, .el-input__suffix {
+              position: relative;
+            }
+            .el-input__icon {
+              line-height: unset;
+            }
+            .el-icon-arrow-up:before {
+              display: block;
+              content: ' ';
+              background-image: url('assets/icons/arrow.svg');
+              background-repeat: no-repeat;
+              width: 20px;
+              height: 8px;
+              transform: rotate(180deg);
+            }
+          }
+        }
+
+        .footer_icons {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          .footer_next-icon {
+            cursor: pointer;
+            padding: 0.5rem;
+            transform: rotate(-90deg);
+          }
+          .footer_prev-icon {
+            cursor: pointer;
+            padding: 0.5rem;
+            transform: rotate(90deg);
+          }
+        }
+      }
+      &.header {
+        border: 1px solid #dddddd;
+        border-radius: 8px 8px 0 0;
+      }
+      &.table_empty {
+        font-family: 'SoraSB';
+        display: flex;
+        justify-content: center;
+        padding: 0.5rem;
+      }
+    }
+    .table_sticky {
+      position: sticky;
+      top: 0;
+      background: white;
+
+      &:last-child {
+        bottom: 0;
+      }
+    }
+    .table_header {
+      font-family: 'SoraSB';
+      background-color: #ffffff;
+    }
+    .table_footer {
+      background-color: #ffffff;
+    }
+    .cell {
+      border: 1px solid #dddddd;
+      border-top-width: 0;
+      border-bottom-width: 0;
+      border-left-width: 0;
+      padding: 0.5rem;
+      overflow: hidden;
+
+      &:last-child {
+        border: 0;
+      }
+    }
+  }
+}
+
+.el-select-dropdown__item {
+  font-family: 'Sora';
+  font-size: 0.7rem !important;
+}
+.el-select-dropdown__item.selected {
+  color: #D0021B !important;
 }
 </style>
