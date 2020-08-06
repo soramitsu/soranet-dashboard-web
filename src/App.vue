@@ -47,7 +47,7 @@
           :key="row.accountId"
           class="table_row"
         >
-          <span class="cell">{{ (currentPage * currentPageSize) + index + 1 }}</span>
+          <span class="cell">{{ (currentPage * currentPageSize) + index }}</span>
           <span class="cell">{{ row.accountId }} </span>
           <span class="cell">{{ row.amount | toBNString }}</span>
           <span class="cell">{{ row.percentage }}%</span>
