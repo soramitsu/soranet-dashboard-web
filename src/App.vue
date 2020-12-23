@@ -40,7 +40,7 @@
           :key="row.accountId"
           class="table_row"
         >
-          <span class="cell">{{ (currentPage * 50) + index }}</span>
+          <span class="cell">{{ (currentPage * currentPageSize) + index + 1 }}</span>
           <span class="cell">{{ row.accountId }} </span>
           <span class="cell">{{ row.amount | toBNString }}</span>
           <span class="cell">{{ row.percentage }}%</span>
@@ -65,8 +65,22 @@
             </el-select>
           </div>
           <div class="footer_icons">
-            <img @click="nextPage(currentPage - 1)" class="footer_prev-icon" src="@/assets/icons/arrow.svg">
-            <img @click="nextPage(currentPage + 1)" class="footer_next-icon" src="@/assets/icons/arrow.svg">
+            <img
+              @click="nextPage(currentPage - 1)"
+              :class="[
+                'footer_prev-icon',
+                currentPage === 0 ? 'disabled' : ''
+              ]"
+              src="@/assets/icons/arrow.svg"
+            >
+            <img
+              @click="nextPage(currentPage + 1)"
+              :class="[
+                'footer_next-icon',
+                holders.length < currentPageSize ? 'disabled' : ''
+              ]"
+              src="@/assets/icons/arrow.svg"
+            >
           </div>
         </div>
       </div>
@@ -118,14 +132,20 @@ export default {
       const { data } = await axios.get('/config.json')
       this.URL = data.services.dc.value
     },
-    async getHolders () {
+    async getHolders (page) {
       const { data } = await axios.get(`${this.protocol}//${this.URL}/v1/holders`, {
         params: {
-          pageNumber: this.currentPage,
+          pageNumber: page,
           pageSize: this.currentPageSize
         }
       })
+
+      if (data.status.code === 'UNKNOWN') {
+        return data.status
+      }
+
       this.holders = data.holders
+      return data.status
     },
     async getTotal () {
       const { data } = await axios.get(`${this.protocol}//${this.URL}/v1/holders/total`)
@@ -140,12 +160,11 @@ export default {
       this.lastUpdate = format(parseISO(totalSupply.timestamp), 'PPpp')
     },
     async nextPage (page) {
-      if (page < 0) {
-        this.currentPage = 0
-      } else {
+      if (page < 0) return
+      const status = await this.getHolders(page)
+      if (status.code === 'OK') {
         this.currentPage = page
       }
-      await this.getHolders()
     },
     async onPageSizeChange () {
       this.nextPage(0)
@@ -386,6 +405,9 @@ html {
             cursor: pointer;
             padding: 0.5rem;
             transform: rotate(90deg);
+          }
+          .disabled {
+            cursor: not-allowed;
           }
         }
       }
