@@ -49,7 +49,7 @@
         >
           <span class="cell">{{ (currentPage * currentPageSize) + index + 1 }}</span>
           <span class="cell">{{ row.accountId }} </span>
-          <span class="cell">{{ row.amount | toBNString }}</span>
+          <span class="cell">{{ row.amount | toBNString }}</span>
           <span class="cell">{{ row.percentage }}%</span>
         </div>
         <div v-if="!holders.length" class="table_row table_empty">
@@ -125,6 +125,8 @@ export default {
     cardComponent
   },
   data () {
+    const currentToken = this.$route.params.token || TOKENS.VAL
+    console.log(this)
     return {
       URL: '',
       protocol: location.protocol,
@@ -148,10 +150,11 @@ export default {
       tokens: TOKENS,
       currentPage: 0,
       currentPageSize: 10,
-      currentToken: TOKENS.VAL
+      currentToken
     }
   },
   async created () {
+    console.log(this)
     await this.getEnv()
     await this.getHolders(0, this.currentToken)
     Vue.set(this.tokensInfo, 'XOR', await this.getTotal(this.tokens.XOR))
