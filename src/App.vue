@@ -127,7 +127,7 @@ export default {
   data () {
     return {
       URL: '',
-      protocol: 'https://',
+      protocol: location.protocol,
       holders: [],
       tokensInfo: {
         XOR: {
