@@ -41,10 +41,7 @@ export default {
       return this.token === this.currentToken
     },
     icon () {
-      if (this.token === TOKENS.XOR) {
-        return TOKENS.XOR
-      }
-      return TOKENS.VAL
+      return this.token
     },
     overlayStyle () {
       if (this.token === TOKENS.XOR) {
