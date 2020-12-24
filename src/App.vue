@@ -1,37 +1,44 @@
 <template>
   <div id="app">
     <div class="update_block">
-      <img class="update_block-icon" src="@/assets/icons/info.svg"/>
-      <span class="update_block-desc">Last update (every 24h): <span class="black">{{ lastUpdate }}</span></span>
+      <span class="update_block-desc">Last update (every 24h): <span class="black">{{
+        currentToken === tokens.XOR
+          ? tokensInfo.XOR.lastUpdate
+          : tokensInfo.VAL.lastUpdate
+      }}</span></span>
+    </div>
+    <div class="logo_block">
+        <img class="logo_block-img" src="@/assets/icons/sora.png" alt="SORA NET Dashboard" />
+        <div class="desk_block-text">
+          <span>SORA – The Decentralized Autonomous Economy</span>
+          <a class="link" href="https://sora.org" alt="Sora.org">sora.org<img class="icon" src="@/assets/icons/external.svg"></a>
+        </div>
     </div>
     <div class="row_block">
-      <div class="supply_block">
-        <div class="supply_block-icon">
-          <img class="icon" src="@/assets/icons/xor.svg" alt="XOR Total Supply" />
-        </div>
-        <div class="supply_block-total">
-          <span class="title">Total xor supply</span>
-          <span class="number">{{ totalSupply.v }}<span class="dot">.{{ totalSupply.dp }}</span></span>
-        </div>
-      </div>
-      <div class="desc_block">
-        <div class="desk_block-text">
-          <span>Decentralized autonomous economy that works for all.</span>
-          <span class="linked">Visit <a class="link" href="https://sora.org" alt="Sora.org">sora.org<img class="icon" src="@/assets/icons/external.svg"></a></span>
-        </div>
-      </div>
-      <div class="logo_block">
-        <img class="logo_block-img" src="@/assets/icons/sora.png" alt="XOR Total Supply" />
-      </div>
+      <card-component
+        @click.native="onTokenChange(tokens.VAL)"
+        :current-token="currentToken"
+        :token="tokens.VAL"
+        :supply="tokensInfo.VAL.totalSupply"
+      />
+      <card-component
+        @click.native="onTokenChange(tokens.XOR)"
+        :current-token="currentToken"
+        :token="tokens.XOR"
+        :supply="tokensInfo.XOR.totalSupply"
+      />
     </div>
     <div class="table_block">
-      <span class="table_block-title">SoraNet XOR holders</span>
+      <div class="table_title">
+        <span class="table_block-title">SORA NET {{ currentToken.toUpperCase() }} Holders</span>
+        <switch-component @change="onTokenChange" :current-token="currentToken" />
+      </div>
       <div class="table">
         <div class="table_sticky">
           <div class="table_header table_row header">
             <span class="cell">#</span>
             <span class="cell">Account ID</span>
-            <span class="cell">Holders Amount</span>
+            <span class="cell">{{ currentToken.toUpperCase() }} Holders Amount</span>
             <span class="cell">Total Supply Part</span>
           </div>
         </div>
@@ -57,7 +64,7 @@
               @change="onPageSizeChange"
             >
               <el-option
-                v-for="amount in [50, 100, 200, 500]"
+                v-for="amount in [10, 50, 100, 200, 500]"
                 :key="amount"
                 :label="amount"
                 :value="amount">
@@ -89,10 +96,15 @@
 </template>
 
 <script>
+import Vue from 'vue'
 import axios from 'axios'
 import BN from 'bignumber.js'
 import format from 'date-fns/format'
 import parseISO from 'date-fns/parseISO'
+
+import switchComponent from '@/components/switch.vue'
+import cardComponent from '@/components/card.vue'
+import { TOKENS } from '@/consts'
 
 const BigNumberFormat = {
   prefix: '',
@@ -108,32 +120,50 @@ BN.set({ DECIMAL_PLACES: 18, ROUNDING_MODE: BN.ROUND_UP })
 
 export default {
   name: 'app',
+  components: {
+    switchComponent,
+    cardComponent
+  },
   data () {
     return {
       URL: '',
       protocol: location.protocol,
       holders: [],
-      totalSupply: {
-        v: '0',
-        dp: '0'
+      tokensInfo: {
+        XOR: {
+          totalSupply: {
+            v: '0',
+            dp: '0'
+          },
+          lastUpdate: 0
+        },
+        VAL: {
+          totalSupply: {
+            v: '0',
+            dp: '0'
+          },
+          lastUpdate: 0
+        }
       },
-      lastUpdate: 0,
+      tokens: TOKENS,
       currentPage: 0,
-      currentPageSize: 100
+      currentPageSize: 10,
+      currentToken: TOKENS.VAL
     }
   },
   async created () {
     await this.getEnv()
-    await this.getHolders()
-    await this.getTotal()
+    await this.getHolders(0, this.currentToken)
+    Vue.set(this.tokensInfo, 'XOR', await this.getTotal(this.tokens.XOR))
+    Vue.set(this.tokensInfo, 'VAL', await this.getTotal(this.tokens.VAL))
   },
   methods: {
     async getEnv () {
       const { data } = await axios.get('/config.json')
       this.URL = data.services.dc.value
     },
-    async getHolders (page) {
-      const { data } = await axios.get(`${this.protocol}//${this.URL}/v1/holders`, {
+    async getHolders (page, token) {
+      const { data } = await axios.get(`${this.protocol}//${this.URL}/v1/holders/${token}`, {
         params: {
           pageNumber: page,
           pageSize: this.currentPageSize
@@ -147,27 +177,34 @@ export default {
       this.holders = data.holders
       return data.status
     },
-    async getTotal () {
-      const { data } = await axios.get(`${this.protocol}//${this.URL}/v1/holders/total`)
+    async getTotal (token) {
+      const { data } = await axios.get(`${this.protocol}//${this.URL}/v1/holders/${token}/total`)
       const { totalSupply } = data
       const supply = new BN(totalSupply ? totalSupply.supply : 0)
         .toFormat(BigNumberFormat)
         .split('.')
-      this.totalSupply = {
-        v: supply[0],
-        dp: supply[1] && supply[1].length ? supply[1] : '00'
+      return {
+        totalSupply: {
+          v: supply[0],
+          dp: supply[1] && supply[1].length ? supply[1] : '00'
+        },
+        lastUpdate: format(parseISO(totalSupply.timestamp), 'PPpp')
       }
-      this.lastUpdate = format(parseISO(totalSupply.timestamp), 'PPpp')
     },
     async nextPage (page) {
       if (page < 0) return
-      const status = await this.getHolders(page)
+      const status = await this.getHolders(page, this.currentToken)
       if (status.code === 'OK') {
         this.currentPage = page
       }
     },
     async onPageSizeChange () {
       this.nextPage(0)
+    },
+
+    async onTokenChange (token) {
+      this.currentToken = token
+      await this.getHolders(0, this.currentToken)
     }
   },
   filters: {
@@ -222,16 +259,29 @@ html {
   color: #202020;
   height: 100vh;
   padding: 2rem 4rem;
+
+  @media screen and (max-width: 375px) {
+    padding: 1rem;
+  }
 }
 
 .update_block {
   display: flex;
-  align-items: center ;
-  .update_block-icon {
-    width: 20px;
-    margin-right: 0.5rem;
+  align-items: center;
+  justify-content: flex-end;
+
+  @media screen and (max-width: 890px) {
+    justify-content: flex-start;
   }
+
+  @media screen and (max-width: 500px) {
+    justify-content: center;
+  }
+
   .update_block-desc {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
     color: #a1a1a0;
 
     & .black {
@@ -242,11 +292,17 @@ html {
 
 .row_block {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   grid-template-rows: 1fr;
-  gap: 1px 1px;
-  grid-template-areas: ". . .";
+  gap: 1px 25px;
+  grid-template-areas: ". .";
   margin: 2rem 0;
+
+  @media screen and (max-width: 890px) {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
 }
 
 .supply_block {
@@ -286,46 +342,76 @@ html {
   }
 }
 
-.desc_block {
+.logo_block {
   display: flex;
-  margin: 0 auto;
-  max-width: 60%;
+  flex-direction: row;
+  align-items: center;
+  margin: 2rem 0;
+
+  @media screen and (max-width: 500px) {
+    flex-direction: column;
+  }
+
+  .logo_block-img {
+    height: 6rem;
+  }
   .desk_block-text {
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    color: #a1a1a0;
-    padding: 0.2rem 0;
-    & .linked {
-      line-height: 1px;
-      & .link {
-        color: #D0021B;
-        text-decoration: unset;
+    font-size: 30px;
+    padding-left: 3rem;
+    max-width: 30rem;
 
-        &:hover {
-          text-decoration: underline;
-        }
-      }
+    @media screen and (max-width: 500px) {
+      margin-top: 1rem;
+      text-align: center;
+      padding-left: unset;
+      align-items: center;
+      font-size: 20px;
+    }
 
-      & .icon {
-        width: 0.6rem;
-        margin-left: 0.2rem;
+    & .icon {
+      width: 0.6rem;
+      margin-left: 0.2rem;
+    }
+    & .link {
+      text-decoration: unset;
+      font-size: 16px;
+      font-weight: 700;
+      color: #D0021B;
+      width: fit-content;
+
+      &:hover {
+        text-decoration: underline;
       }
     }
   }
 }
 
-.logo_block {
-  display: flex;
-  justify-content: flex-end;
-  .logo_block-img {
-    height: 5.5rem;
-  }
-}
-
 .table_block {
-  .table_block-title {
-    font-size: 2rem
+  padding-bottom: 1.25rem;
+  .table_title {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+
+    @media screen and (max-width: 500px) {
+      flex-direction: column-reverse;
+      align-items: unset;
+      .sora-switch {
+        margin-bottom: 1rem;
+      }
+    }
+
+    .table_block-title {
+      font-weight: 700;
+      font-size: 40px;
+
+      @media screen and (max-width: 890px) {
+        font-size: 28px;
+      }
+    }
   }
 
   .table {
@@ -432,14 +518,15 @@ html {
       }
     }
     .table_header {
-      font-family: 'SoraSB';
+      font-weight: 700;
       background-color: #ffffff;
     }
     .table_footer {
       background-color: #ffffff;
     }
     .cell {
-      border: 1px solid #dddddd;
+      font-size: 14px;
+
       border-top-width: 0;
       border-bottom-width: 0;
       border-left-width: 0;
