@@ -56,39 +56,14 @@
           No data
         </div>
         <div class="table_row table_footer footer">
-          <div class="footer_action">
-            <span class="footer_action-desc">Rows per page</span>
-            <el-select
-              v-model="currentPageSize"
-              class="footer_action-selector"
-              @change="onPageSizeChange"
-            >
-              <el-option
-                v-for="amount in [10, 50, 100, 200, 500]"
-                :key="amount"
-                :label="amount"
-                :value="amount">
-              </el-option>
-            </el-select>
-          </div>
-          <div class="footer_icons">
-            <img
-              @click="nextPage(currentPage - 1)"
-              :class="[
-                'footer_prev-icon',
-                currentPage === 0 ? 'disabled' : ''
-              ]"
-              src="@/assets/icons/arrow.svg"
-            >
-            <img
-              @click="nextPage(currentPage + 1)"
-              :class="[
-                'footer_next-icon',
-                holders.length < currentPageSize ? 'disabled' : ''
-              ]"
-              src="@/assets/icons/arrow.svg"
-            >
-          </div>
+          <s-pagination
+            :key="currentToken"
+            :total="tokensInfo[currentToken.toUpperCase()].totalHolders"
+            @size-change="onPageSizeChange"
+            @current-change="(page) => nextPage(page - 1)"
+            @prev-click="nextPage(currentPage - 1)"
+            @next-click="nextPage(currentPage + 1)"
+          />
         </div>
       </div>
     </div>
@@ -125,8 +100,7 @@ export default {
     cardComponent
   },
   data () {
-    const currentToken = this.$route.params.token || TOKENS.VAL
-    console.log(this)
+    const currentToken = this.$route.params.token
     return {
       URL: '',
       protocol: location.protocol,
@@ -137,6 +111,7 @@ export default {
             v: '0',
             dp: '0'
           },
+          totalHolders: 0,
           lastUpdate: 0
         },
         VAL: {
@@ -144,6 +119,7 @@ export default {
             v: '0',
             dp: '0'
           },
+          totalHolders: 0,
           lastUpdate: 0
         }
       },
@@ -154,7 +130,6 @@ export default {
     }
   },
   async created () {
-    console.log(this)
     await this.getEnv()
     await this.getHolders(0, this.currentToken)
     Vue.set(this.tokensInfo, 'XOR', await this.getTotal(this.tokens.XOR))
@@ -182,7 +157,7 @@ export default {
     },
     async getTotal (token) {
       const { data } = await axios.get(`${this.protocol}//${this.URL}/v1/holders/${token}/total`)
-      const { totalSupply } = data
+      const { totalSupply, holders } = data
       const supply = new BN(totalSupply ? totalSupply.supply : 0)
         .toFormat(BigNumberFormat)
         .split('.')
@@ -191,6 +166,7 @@ export default {
           v: supply[0],
           dp: supply[1] && supply[1].length ? supply[1] : '00'
         },
+        totalHolders: holders,
         lastUpdate: format(parseISO(totalSupply.timestamp), 'PPpp')
       }
     },
@@ -201,13 +177,17 @@ export default {
         this.currentPage = page
       }
     },
-    async onPageSizeChange () {
+    async onPageSizeChange (size) {
+      this.currentPageSize = size
       this.nextPage(0)
     },
 
     async onTokenChange (token) {
       this.currentToken = token
+      this.currentPageSize = 10
+      await this.nextPage(0)
       await this.getHolders(0, this.currentToken)
+      this.$router.push(`/${token}`)
     }
   },
   filters: {
@@ -219,6 +199,8 @@ export default {
 </script>
 
 <style lang='scss'>
+@import '../node_modules/@soramitsu/soramitsu-js-ui/lib/styles/index';
+
 @font-face {
   font-family: 'SoraB';
   src: url('./assets/fonts/Sora-Bold.otf');
@@ -286,6 +268,8 @@ html {
     font-weight: 700;
     text-transform: uppercase;
     color: #a1a1a0;
+    letter-spacing: 0.06em;
+    font-feature-settings: 'case' on;
 
     & .black {
       color: #202020;
@@ -326,7 +310,6 @@ html {
   }
 
   .supply_block-total {
-    font-family: 'SoraSB';
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -364,6 +347,8 @@ html {
     font-size: 30px;
     padding-left: 3rem;
     max-width: 30rem;
+    letter-spacing: -0.04em;
+    font-feature-settings: 'tnum' on, 'lnum' on, 'salt' on, 'case' on;
 
     @media screen and (max-width: 500px) {
       margin-top: 1rem;
@@ -383,6 +368,8 @@ html {
       font-weight: 700;
       color: #D0021B;
       width: fit-content;
+      letter-spacing: 0.01em;
+      font-feature-settings: 'tnum' on, 'lnum' on, 'case' on, 'salt' on;
 
       &:hover {
         text-decoration: underline;
@@ -408,8 +395,11 @@ html {
     }
 
     .table_block-title {
+      font-family: 'SoraB';
       font-weight: 700;
       font-size: 40px;
+      letter-spacing: -0.02em;
+      font-feature-settings: 'tnum' on, 'lnum' on, 'salt' on, 'ss01' on, 'case' on;
 
       @media screen and (max-width: 890px) {
         font-size: 28px;
@@ -425,78 +415,28 @@ html {
       grid-template-rows: 1fr;
       gap: 1px 1px;
       grid-template-areas: ". . . .";
-
       border: 1px solid #dddddd;
       border-top-width: 0px;
+      height: 48px;
+      justify-content: center;
+      align-items: center;
 
       &.footer {
-        grid-template-columns: 1fr 0.1fr;
         padding: 0.5rem;
         border: 1px solid #dddddd;
         border-top-width: 0px;
         border-radius: 0px 0px 8px 8px;
+        grid-template-columns: 1fr;
 
-        .footer_action {
-          display: flex;
-          justify-content: flex-end;
-          align-items: center;
-          flex-direction: row;
-          margin-right: 2rem;
-          .footer_action-desc {
-            font-size: 0.8rem;
-            color: #a1a1a1;
-          }
-          .footer_action-selector {
-            .el-input {
-              display: flex;
-              justify-content: center;
-              align-items: center;
-              height: 10px;
-              .el-select__caret {
-                color: #D0021B;
-              }
-            }
-            .el-input__inner {
-              color: #202020;
-              width: 3rem;
-              border: 0px;
-              height: 12px;
-              padding-right: 0px;
-            }
-            .el-input__prefix, .el-input__suffix {
-              position: relative;
-            }
-            .el-input__icon {
-              line-height: unset;
-            }
-            .el-icon-arrow-up:before {
-              display: block;
-              content: ' ';
-              background-image: url('assets/icons/arrow.svg');
-              background-repeat: no-repeat;
-              width: 20px;
-              height: 8px;
-              transform: rotate(180deg);
-            }
-          }
-        }
-
-        .footer_icons {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          .footer_next-icon {
-            cursor: pointer;
-            padding: 0.5rem;
-            transform: rotate(-90deg);
-          }
-          .footer_prev-icon {
-            cursor: pointer;
-            padding: 0.5rem;
-            transform: rotate(90deg);
-          }
-          .disabled {
-            cursor: not-allowed;
+        .el-pagination {
+          display: grid;
+          grid-template-columns: 0.20fr 0.20fr 1.5fr 0fr;
+          grid-template-rows: 1fr;
+          gap: 0px 0px;
+          grid-template-areas: ". . . . . .";
+          &::before {
+            display: unset;
+            content: unset;
           }
         }
       }
@@ -505,7 +445,6 @@ html {
         border-radius: 8px 8px 0 0;
       }
       &.table_empty {
-        font-family: 'SoraSB';
         display: flex;
         justify-content: center;
         padding: 0.5rem;
@@ -521,8 +460,10 @@ html {
       }
     }
     .table_header {
+      font-family: 'SoraB';
       font-weight: 700;
       background-color: #ffffff;
+      font-feature-settings: 'tnum' on, 'lnum' on, 'salt' on, 'case' on;
     }
     .table_footer {
       background-color: #ffffff;
@@ -535,6 +476,7 @@ html {
       border-left-width: 0;
       padding: 0.5rem;
       overflow: hidden;
+      font-feature-settings: 'tnum' on, 'lnum' on, 'case' on, 'salt' on, 'ss01' on;
 
       &:last-child {
         border: 0;
@@ -544,7 +486,6 @@ html {
 }
 
 .el-select-dropdown__item {
-  font-family: 'Sora';
   font-size: 0.7rem !important;
 }
 .el-select-dropdown__item.selected {

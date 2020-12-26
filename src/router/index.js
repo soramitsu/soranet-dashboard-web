@@ -8,21 +8,20 @@ Vue.use(VueRouter)
 
 const routes = [
   {
-    path: '/',
-    name: 'App',
-    component: App
-  },
-  {
     path: '/:token',
     name: 'App',
     component: App,
-    props: (route) => ({
-      token: route.params.token === TOKENS.XOR ? TOKENS.XOR : TOKENS.VAL
-    })
+    beforeEnter: (to, from, next) => {
+      const { token } = to.params
+      if (token !== TOKENS.XOR && token !== TOKENS.VAL) {
+        return next(`/${TOKENS.VAL}`)
+      }
+      next()
+    }
   },
   {
     path: '*',
-    redirect: '/'
+    redirect: `/${TOKENS.VAL}`
   }
 ]
 
