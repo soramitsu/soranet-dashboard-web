@@ -5,7 +5,7 @@
     </div>
     <div class="card_desc">
       <span class="card_desc-title">TOTAL {{ token.toUpperCase() }} SUPPLY</span>
-      <span class="card_desc-amount">{{ supply.v }}.{{ supply.dp }}</span>
+      <span class="card_desc-amount">{{ supply.v }}.<span class="grey">{{ supply.dp }}</span></span>
     </div>
     <div class="card_overlay" :style="overlayStyle" />
   </div>
@@ -97,19 +97,29 @@ export default {
     width: 75%;
 
     .card_desc-title {
+      font-family: 'SoraB';
       font-size: 14px;
       font-weight: 700;
+      letter-spacing: 0.01em;
+      font-feature-settings: 'tnum' on, 'lnum' on, 'case' on;
 
       @media screen and (max-width: 500px) {
         font-size: 10px;
       }
     }
     .card_desc-amount {
+      font-family: 'SoraB';
       font-size: 30px;
       font-weight: 700;
       text-overflow: ellipsis;
       overflow: hidden;
       white-space: nowrap;
+      letter-spacing: -0.04em;
+      font-feature-settings: 'tnum' on, 'lnum' on, 'salt' on, 'case' on;
+
+      .grey {
+        color: #a3a4a8;
+      }
 
       @media screen and (max-width: 500px) {
         font-size: 25px;
