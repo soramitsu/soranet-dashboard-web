@@ -16,22 +16,14 @@
     </div>
     <div class="row_block">
       <card-component
-        @click.native="onTokenChange(tokens.VAL)"
         :current-token="currentToken"
-        :token="tokens.VAL"
-        :supply="tokensInfo.VAL.totalSupply"
-      />
-      <card-component
-        @click.native="onTokenChange(tokens.XOR)"
-        :current-token="currentToken"
-        :token="tokens.XOR"
-        :supply="tokensInfo.XOR.totalSupply"
+        :token="currentToken"
+        :supply="tokensInfo[currentToken.toUpperCase()].totalSupply"
       />
     </div>
     <div class="table_block">
       <div class="table_title">
         <span class="table_block-title">SORA NET {{ currentToken.toUpperCase() }} Holders</span>
-        <switch-component @change="onTokenChange" :current-token="currentToken" />
       </div>
       <div class="table">
         <div class="table_sticky">
@@ -77,7 +69,6 @@ import BN from 'bignumber.js'
 import format from 'date-fns/format'
 import parseISO from 'date-fns/parseISO'
 
-import switchComponent from '@/components/switch.vue'
 import cardComponent from '@/components/card.vue'
 import { TOKENS } from '@/consts'
 
@@ -96,7 +87,6 @@ BN.set({ DECIMAL_PLACES: 18, ROUNDING_MODE: BN.ROUND_UP })
 export default {
   name: 'app',
   components: {
-    switchComponent,
     cardComponent
   },
   data () {
@@ -180,14 +170,6 @@ export default {
     async onPageSizeChange (size) {
       this.currentPageSize = size
       this.nextPage(0)
-    },
-
-    async onTokenChange (token) {
-      this.currentToken = token
-      this.currentPageSize = 10
-      await this.nextPage(0)
-      await this.getHolders(0, this.currentToken)
-      this.$router.push(`/${token}`)
     }
   },
   filters: {
@@ -279,10 +261,10 @@ html {
 
 .row_block {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   grid-template-rows: 1fr;
   gap: 1px 25px;
-  grid-template-areas: ". .";
+  grid-template-areas: ".";
   margin: 2rem 0;
 
   @media screen and (max-width: 890px) {
