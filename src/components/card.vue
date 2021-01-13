@@ -1,5 +1,5 @@
 <template>
-  <div :class="['sora-card', isActive ? 'active' : '']" >
+  <div class="sora-card" >
     <div class="card_icon">
       <img :src="require(`@/assets/icons/${icon}.svg`)" />
     </div>
@@ -69,21 +69,6 @@ export default {
               0px 1px 1px 0px rgba(0, 0, 0, 0.05);
   overflow: hidden;
 
-  &.active {
-    background: #F5F7F8;
-  }
-
-  &:not(.active):hover {
-    cursor: pointer;
-  }
-
-  &.active .card_overlay {
-    position: absolute;
-    top: 0px;
-    height: 4px;
-    width: 100%;
-  }
-
   .card_icon {
     display: flex;
     padding: 0 8px;
@@ -94,7 +79,7 @@ export default {
     flex-direction: column;
     padding-left: 16px;
     border-left: 1px solid #DDDDDD;
-    width: 75%;
+    width: 90%;
 
     .card_desc-title {
       font-family: 'SoraB';
